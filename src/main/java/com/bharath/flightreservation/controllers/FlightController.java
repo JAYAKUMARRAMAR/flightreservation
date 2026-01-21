@@ -3,6 +3,7 @@ package com.bharath.flightreservation.controllers;
 import com.bharath.flightreservation.entities.Flight;
 import com.bharath.flightreservation.repositories.FlightRepository;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.stereotype.Controller;
@@ -16,10 +17,15 @@ import java.time.ZoneId;
 import java.util.*;
 
 @Controller
+@Slf4j
 public class FlightController {
 
+    private final FlightRepository flightRepository;
+
     @Autowired
-    private FlightRepository flightRepository;
+    public FlightController(FlightRepository flightRepository) {
+        this.flightRepository = flightRepository;
+    }
 
     @GetMapping("/findFlights")
     public String displayFindFlights() {
@@ -31,11 +37,20 @@ public class FlightController {
                               @RequestParam("to") String to,
                               @RequestParam("departureDate") @DateTimeFormat(pattern = "MM-dd-yyyy") Date departureDate,
                               Model model) {
+        log.info("Searching flights from {} to {} on {}", from, to, departureDate);
+        
+        if (from == null || from.trim().isEmpty() || to == null || to.trim().isEmpty()) {
+            log.warn("Invalid search parameters: from={}, to={}", from, to);
+            model.addAttribute("error", "Departure and arrival cities are required");
+            return "findFlights";
+        }
+        
         LocalDate localDate = departureDate.toInstant()
                 .atZone(ZoneId.systemDefault())
                 .toLocalDate();
         List<Flight> flights = flightRepository.findFlights(from, to, localDate);
-        model.addAttribute("flights",flights);
+        log.info("Found {} flights", flights.size());
+        model.addAttribute("flights", flights);
         return "displayFlights";
     }
 }
